@@ -1,6 +1,9 @@
 import { ImagePool } from "@squoosh/lib";
-import { existsSync, readdirSync, readFileSync, mkdirSync } from "fs";
+import { existsSync, readFileSync, mkdirSync } from "fs";
 import { writeFile } from "fs/promises";
+import { dirname } from "path";
+
+import showFiles from "./showFiles.mjs";
 
 const IMAGE_DIR = "./images";
 const OUTPUT_DIR = "./dist";
@@ -28,16 +31,20 @@ const preprocessOptions = {
 const imagePool = new ImagePool();
 
 // 画像ディレクトリ内のJPGとPNGのパス名を抽出
-const imageFileList = readdirSync(IMAGE_DIR).filter((file) => {
+const imageFileList = [];
+await showFiles(IMAGE_DIR, (fp) => {
   const regex = /\.(jpe?g|png)$/i;
-  return regex.test(file);
+  if (regex.test(fp)) {
+    imageFileList.push(fp);
+  }
 });
 
 // 抽出したファイルをimagePool内にセットし、ファイル名とimagePoolの配列を作成
 const imagePoolList = imageFileList.map((fileName) => {
-  const imageFile = readFileSync(`${IMAGE_DIR}/${fileName}`);
+  const imageFile = readFileSync(`${fileName}`);
   const image = imagePool.ingestImage(imageFile);
-  return { name: fileName, image };
+
+  return { name: fileName.replace(IMAGE_DIR.replace("./", ""), ""), image };
 });
 
 // 前処理を実行
@@ -85,6 +92,7 @@ for (const item of imagePoolList) {
   if (!existsSync(OUTPUT_DIR)) {
     mkdirSync(OUTPUT_DIR);
   }
+  mkdirSync(`${OUTPUT_DIR}${dirname(name)}`, { recursive: true });
   // ファイルを書き込む
   await writeFile(`${OUTPUT_DIR}/${name}`, data.binary);
 }

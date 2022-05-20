@@ -1,7 +1,9 @@
 import { ImagePool } from "@squoosh/lib";
-import { existsSync, readdirSync, readFileSync, mkdirSync } from "fs";
+import { existsSync, readFileSync, mkdirSync } from "fs";
 import { writeFile } from "fs/promises";
-import path from "path";
+import { dirname } from "path";
+
+import showFiles from "./showFiles.mjs";
 
 const IMAGE_DIR = "./images";
 const OUTPUT_DIR = "./dist";
@@ -16,17 +18,23 @@ const webpEncodeOptions = {
 const imagePool = new ImagePool();
 
 // 画像ディレクトリ内のJPGとPNGのパス名を抽出
-const imageFileList = readdirSync(IMAGE_DIR).filter((file) => {
+const imageFileList = [];
+await showFiles(IMAGE_DIR, (fp) => {
   const regex = /\.(jpe?g|png)$/i;
-  return regex.test(file);
+  if (regex.test(fp)) {
+    imageFileList.push(fp);
+  }
 });
 
 // 抽出したファイルをimagePool内にセットし、ファイル名とimagePoolの配列を作成
 const imagePoolList = imageFileList.map((file) => {
-  const imageFile = readFileSync(`${IMAGE_DIR}/${file}`);
-  const fileName = path.parse(`${IMAGE_DIR}/${file}`).name;
+  const imageFile = readFileSync(`${file}`);
   const image = imagePool.ingestImage(imageFile);
-  return { name: fileName, image };
+
+  return {
+    name: file.replace(IMAGE_DIR.replace("./", ""), ""),
+    image,
+  };
 });
 
 // Webpで圧縮する
@@ -51,6 +59,8 @@ for (const item of imagePoolList) {
     mkdirSync(OUTPUT_DIR);
   }
   // 拡張子をwebpに変換してファイルを書き込む
+  mkdirSync(`${OUTPUT_DIR}${dirname(name)}`, { recursive: true });
+  // ファイルを書き込む
   await writeFile(`${OUTPUT_DIR}/${name}.webp`, data.binary);
 }
 
