@@ -20,14 +20,6 @@ const pngEncodeOptions = {
   },
 };
 
-// 前処理（リサイズなど）のオプション
-const preprocessOptions = {
-  resize: {
-    enabled: true,
-    width: 1920,
-  },
-};
-
 const imagePool = new ImagePool();
 
 // 画像ディレクトリ内のJPGとPNGのパス名を抽出
@@ -52,7 +44,21 @@ await Promise.all(
   imagePoolList.map(async (item) => {
     const { image } = item;
     // リサイズなどを処理するためにデコードする
-    await image.decoded;
+    const {
+      bitmap: { width, height },
+    } = await image.decoded;
+
+    // 前処理（リサイズなど）のオプション
+    const preprocessOptions =
+      width > 1920
+        ? {
+            resize: {
+              enabled: true,
+              width: 1920,
+            },
+          }
+        : {};
+
     return await image.preprocess(preprocessOptions);
   })
 );
